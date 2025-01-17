@@ -1,15 +1,18 @@
-from appointment_confirmation_event import AppointmentConfirmationEvent
+from event import ApplicationSentEvent, ApplicationProcessedEvent
 
 class Embassy:
-    def __init__(self, name, address, phone_number, email, event_queue):
+    def __init__(self, name):
         self.name = name
-        self.address = address
-        self.phone_number = phone_number
-        self.email = email
-        self.event_queue = event_queue
 
-    def handle_appointment_request(self, event):
-        print(f"Received appointment request for Passport: {event.payload['passport_number']} on {event.payload['date']}")
-        confirmation_event = AppointmentConfirmationEvent(event.payload["passport_number"], is_confirmed=True)
-        self.event_queue.append(confirmation_event)
-        print('Event', confirmation_event.name, 'emitted!')
+    def process_application(self, queue):
+        event = queue.receive_event()
+        if event and isinstance(event, ApplicationSentEvent):
+            student_name = event.payload["student"]
+            decision = "Accepted" if len(student_name) % 2 == 0 else "Rejected"
+            response_event = ApplicationProcessedEvent({
+                "student": student_name,
+                "embassy": self.name,
+                "status": decision
+            })
+            queue.send_event(response_event)
+            print(f"{self.name} processed application for {student_name}. Decision: {decision}")

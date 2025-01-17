@@ -1,22 +1,21 @@
-from embassy_appointment_request_event import EmbassyAppointmentRequestEvent
+from event import ApplicationProcessedEvent, SponsorshipGrantedEvent, LanguageTrainingScheduledEvent, ApplicationSentEvent
 
 class Student:
-    def __init__(self, first_name, last_name, day_of_birth, address, phone_number, passport_number, event_queue):
-        self.first_name = first_name
-        self.last_name = last_name
-        self.day_birth = day_of_birth
-        self.address = address
-        self.phone_number = phone_number
-        self.passport_number = passport_number
-        self.event_queue = event_queue
+    def __init__(self, name):
+        self.name = name
+        self.application_status = None
 
-    def ask_for_embassy_appointment(self, date):
-        event = EmbassyAppointmentRequestEvent(self.passport_number, date)
-        self.event_queue.append(event)
-        print('Event', event.name, 'emitted!')
+    def apply_to_embassy(self, embassy, queue):
+        payload = {"student": self.name, "embassy": embassy.name}
+        event = ApplicationSentEvent(payload)
+        queue.send_event(event)
+        print(f"{self.name} applied to {embassy.name}.")
 
-    def handle_appointment_confirmation(self, event):
-        if event.payload['is_confirmed']:
-            print("Awesome. I have an appointment at Polish Embassy")
-        else:    
-            print("Oh no! I will have to try again")
+    def receive_response(self, event):
+        if isinstance(event, ApplicationProcessedEvent):
+            self.application_status = event.payload["status"]
+            print(f"{self.name} received an update from {event.payload['embassy']}: {self.application_status}.")
+        elif isinstance(event, SponsorshipGrantedEvent):
+            print(f"{self.name} was granted sponsorship by {event.payload['sponsor']}.")
+        elif isinstance(event, LanguageTrainingScheduledEvent):
+            print(f"{self.name} was scheduled for a language training session.")
